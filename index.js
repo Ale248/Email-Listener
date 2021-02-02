@@ -17,7 +17,8 @@ var imap = new Imap({
 });
 
 function openInbox(cb) {
-  imap.openBox("INBOX", true, cb);
+  // has to be false to mark as read
+  imap.openBox("INBOX", false, cb);
 }
 
 var emails = [];
@@ -35,6 +36,20 @@ imap.once("ready", function () {
     // search inbox for UNSEEN messages
     imap.search(["UNSEEN"], function (err, results) {
       if (err) throw err;
+      if (results.length === 0) {
+        // if all emails are read
+        console.log("No unread emails");
+        imap.end();
+        return;
+      }
+      // set to read after fetch
+      imap.setFlags(results, ["\\Seen"], function (err) {
+        if (!err) {
+          console.log("Marked as read");
+        } else {
+          console.log(JSON.stringify(err, null, 2));
+        }
+      });
       // fetch results of the search
       var f = imap.seq.fetch(results, {
         bodies: "",
@@ -103,7 +118,8 @@ const processBody = (body) => {
 imap.once("end", function () {
   console.log("Connection ended");
   // process emails after connection ended
-  console.log(emails);
+  // console.log(emails);
+  console.log("Num emails: " + emails.length);
   // processBody(emails[0].body);
 });
 

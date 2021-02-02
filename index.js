@@ -21,13 +21,14 @@ function openInbox(cb) {
   imap.openBox("INBOX", false, cb);
 }
 
-var emails = [];
+var transactions = [];
 
-// fill emails array with UNSEEN emails from inbox
-// email[i] = {
-//   from: "",
-//   subject: "",
-//   body: "",
+// fill transactions array with info from UNREAD emails from inbox
+// transactions[i] = {
+//   user: "",
+//   code: "",
+//   marketplace: "",
+//   status: "",
 // };
 imap.once("ready", function () {
   openInbox(function (err, box) {
@@ -42,14 +43,14 @@ imap.once("ready", function () {
         imap.end();
         return;
       }
-      // set to read after fetch
-      imap.setFlags(results, ["\\Seen"], function (err) {
-        if (!err) {
-          console.log("Marked as read");
-        } else {
-          console.log(JSON.stringify(err, null, 2));
-        }
-      });
+      // mark emails as read
+      // imap.setFlags(results, ["\\Seen"], function (err) {
+      //   if (!err) {
+      //     console.log("Marked as read");
+      //   } else {
+      //     console.log(JSON.stringify(err, null, 2));
+      //   }
+      // });
       // fetch results of the search
       var f = imap.seq.fetch(results, {
         bodies: "",
@@ -65,12 +66,14 @@ imap.once("ready", function () {
             // console.log(prefix + mail.from.value[0].address);
             // console.log(prefix + mail.subject);
             // console.log(prefix + mail.text);
-            let newEmail = {
-              from: mail.from.value[0].address,
-              subject: mail.subject,
-              body: mail.text,
-            };
-            emails.push(newEmail);
+            // let newEmail = {
+            //   from: mail.from.value[0].address,
+            //   subject: mail.subject,
+            //   body: mail.text,
+            // };
+            // transactions.push(newEmail);
+            // console.log(Object.keys(mail));
+            processEmail(mail, seqno);
           });
         });
         msg.once("attributes", function (attrs) {
@@ -94,6 +97,49 @@ imap.once("ready", function () {
 imap.once("error", function (err) {
   console.log(err);
 });
+
+// transactions[i] = {
+//   user: "",
+//   code: "",
+//   marketplace: "",
+//   status: "",
+// };
+const processEmail = (mail, seqno) => {
+  // 1 email = 1 transaction for now
+  let body = mail.text;
+
+  // for code pattern #___
+  var codePattern = /#([0-9-a-zA-Z]+)/;
+  // for code pattern No. Invoice: ____
+  var codePattern2 = /No\. Invoice:\s*([a-zA-Z0-9\/._-]+)/;
+
+  // add star in between because Tokopedia use *From:* Tokopedia to bold "From"
+  var marketPattern = /From:[\*]*\s*([a-zA-Z0-9._-]+)/;
+
+  let user = mail.from.value[0].address;
+  let code = body.match(codePattern)
+    ? body.match(codePattern)[1]
+    : "no code found";
+  // some code is No. Invoice: ___ instead of #___
+  if (code === "no code found") {
+    code = body.match(codePattern2)
+      ? body.match(codePattern2)[1]
+      : "no code found";
+  }
+  let marketplace = body.match(marketPattern)
+    ? body.match(marketPattern)[1]
+    : "no marketplace found";
+
+  let transaction = {
+    user,
+    code,
+    marketplace,
+    status: "open",
+    num: seqno,
+  };
+
+  transactions.push(transaction);
+};
 
 const processBody = (body) => {
   // body is a string
@@ -119,7 +165,8 @@ imap.once("end", function () {
   console.log("Connection ended");
   // process emails after connection ended
   // console.log(emails);
-  console.log("Num emails: " + emails.length);
+  console.log("Num emails: " + transactions.length);
+  console.log(transactions);
   // processBody(emails[0].body);
 });
 

@@ -101,21 +101,18 @@ const processEmail = (mail, seqno) => {
   // for code pattern #___
   var codePattern = /#([0-9-a-zA-Z]+)/;
   // for code pattern No. Invoice: ____
-  var codePattern2 = /No\. Invoice:\s*([a-zA-Z0-9\/._-]+)/;
+  var codePattern2 = /No\.\s*Invoice:\s*([a-zA-Z0-9\/._-]+)/;
 
   // add star in between because Tokopedia use *From:* Tokopedia to bold "From"
   var marketPattern = /From:[\*]*\s*([a-zA-Z0-9._-]+)/;
 
   let user = mail.from.value[0].address;
+  // // some code is No. Invoice: ___ instead of #___
   let code = body.match(codePattern)
     ? body.match(codePattern)[1]
+    : body.match(codePattern2)
+    ? body.match(codePattern2)[1]
     : "no code found";
-  // some code is No. Invoice: ___ instead of #___
-  if (code === "no code found") {
-    code = body.match(codePattern2)
-      ? body.match(codePattern2)[1]
-      : "no code found";
-  }
   let marketplace = body.match(marketPattern)
     ? body.match(marketPattern)[1]
     : "no marketplace found";
@@ -128,18 +125,16 @@ const processEmail = (mail, seqno) => {
     num: seqno,
   };
 
+  // console.log(mail.text);
+
   transactions.push(transaction);
 };
 
 imap.once("end", function () {
   console.log("Connection ended");
-  // process emails after connection ended
-  // console.log(emails);
+
   console.log("Num emails: " + transactions.length);
   console.log(transactions);
-  // processBody(emails[0].body);
 });
 
 imap.connect();
-
-// test comment

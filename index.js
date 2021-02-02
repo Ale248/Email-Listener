@@ -63,16 +63,6 @@ imap.once("ready", function () {
           // use a specialized mail parsing library (https://github.com/andris9/mailparser)
           simpleParser(stream, (err, mail) => {
             if (err) throw err;
-            // console.log(prefix + mail.from.value[0].address);
-            // console.log(prefix + mail.subject);
-            // console.log(prefix + mail.text);
-            // let newEmail = {
-            //   from: mail.from.value[0].address,
-            //   subject: mail.subject,
-            //   body: mail.text,
-            // };
-            // transactions.push(newEmail);
-            // console.log(Object.keys(mail));
             processEmail(mail, seqno);
           });
         });
@@ -140,26 +130,6 @@ const processEmail = (mail, seqno) => {
 
   transactions.push(transaction);
 };
-
-const processBody = (body) => {
-  // body is a string
-  console.log(body);
-  var example = "alejandro@yahoo.com";
-  var emailPattern = /^([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+)\.[a-zA-Z]{2,4}$/;
-  // no need to get user because we already have it from simpleParser
-  // get e-commerce website (Tokopedia, Shopee, Amazon, etc)
-  var fromPattern = /From:\s*([a-zA-Z0-9._-]+)/;
-  // get order number
-  var orderNumPattern = /#([0-9-a-zA-Z]+)/;
-  console.log("User: " + body.match(userPattern)[1]);
-  console.log("From: " + body.match(fromPattern)[1]);
-  console.log("Order Number: " + body.match(orderNumPattern)[1]);
-};
-
-// const processEmails = () => {
-//   var emailPattern = /^([a-zA-Z0-9._-]+)@([a-zA-Z0-9.-]+)\.[a-zA-Z]{2,4}$/;
-//   for (let i = 0; i < emails.length; i++) {}
-// };
 
 imap.once("end", function () {
   console.log("Connection ended");

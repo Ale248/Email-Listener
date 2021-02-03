@@ -107,7 +107,10 @@ const processEmail = (mail, seqno) => {
   // pattern for "Pesanan Selesai" (Tokopedia)
   var completedPattern = /Pesanan Selesai:/;
 
-  if (body.match(completedPattern)) {
+  // pattern for "telah dikirim" (Shopee)
+  var completedPattern2 = /telah dikirim/i;
+
+  if (body.match(completedPattern) || body.match(completedPattern2)) {
     // console.log(body.match(completedPattern));
     // for code pattern #___
     var codePattern = /#([0-9-a-zA-Z]+)/;
@@ -115,7 +118,10 @@ const processEmail = (mail, seqno) => {
     var codePattern2 = /No\.\s*Invoice:\s*([a-zA-Z0-9\/._-]+)/;
 
     // add star in between because Tokopedia use *From:* Tokopedia to bold "From"
-    var marketPattern = /From:[\*]*\s*([a-zA-Z0-9._-]+)/;
+    // var marketPattern = /From:[\*]*\s*([a-zA-Z0-9._-]+)/;
+    var marketPattern = /Tokopedia/i;
+    // pattern for Shopee
+    var marketPattern2 = /Shopee/i;
 
     let user = mail.from.value[0].address;
     // // some code is No. Invoice: ___ instead of #___
@@ -124,9 +130,12 @@ const processEmail = (mail, seqno) => {
       : body.match(codePattern2)
       ? body.match(codePattern2)[1]
       : "no code found";
+
     let marketplace = body.match(marketPattern)
-      ? body.match(marketPattern)[1]
-      : "no marketplace found";
+      ? "Tokopedia" // Tokopedia probably
+      : body.match(marketPattern2)
+      ? "Shopee" // Shopee
+      : "no code found";
 
     let transaction = {
       user,

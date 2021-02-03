@@ -18,7 +18,7 @@ var imap = new Imap({
 
 function openInbox(cb) {
   // has to be false to mark as read
-  imap.openBox("INBOX", false, cb);
+  imap.openBox("test", false, cb);
 }
 
 var transactions = [];
@@ -31,6 +31,9 @@ var transactions = [];
 //   status: "",
 // };
 imap.once("ready", function () {
+  imap.getBoxes(function (err, boxes) {
+    console.log(boxes);
+  });
   openInbox(function (err, box) {
     if (err) throw err;
     console.log(box.messages.total + " message(s) found!");
@@ -63,6 +66,8 @@ imap.once("ready", function () {
           // use a specialized mail parsing library (https://github.com/andris9/mailparser)
           simpleParser(stream, (err, mail) => {
             if (err) throw err;
+            // console.log(prefix + mail.subject);
+            // console.log(prefix + mail.text);
             processEmail(mail, seqno);
           });
         });
@@ -94,40 +99,44 @@ imap.once("error", function (err) {
 //   marketplace: "",
 //   status: "",
 // };
+// only process completed transactions
 const processEmail = (mail, seqno) => {
   // 1 email = 1 transaction for now
   let body = mail.text;
 
-  // for code pattern #___
-  var codePattern = /#([0-9-a-zA-Z]+)/;
-  // for code pattern No. Invoice: ____
-  var codePattern2 = /No\.\s*Invoice:\s*([a-zA-Z0-9\/._-]+)/;
+  // pattern for "Pesanan Selesai" (Tokopedia)
+  var completedPattern = /Pesanan Selesai:/;
 
-  // add star in between because Tokopedia use *From:* Tokopedia to bold "From"
-  var marketPattern = /From:[\*]*\s*([a-zA-Z0-9._-]+)/;
+  if (body.match(completedPattern)) {
+    // console.log(body.match(completedPattern));
+    // for code pattern #___
+    var codePattern = /#([0-9-a-zA-Z]+)/;
+    // for code pattern No. Invoice: ____
+    var codePattern2 = /No\.\s*Invoice:\s*([a-zA-Z0-9\/._-]+)/;
 
-  let user = mail.from.value[0].address;
-  // // some code is No. Invoice: ___ instead of #___
-  let code = body.match(codePattern)
-    ? body.match(codePattern)[1]
-    : body.match(codePattern2)
-    ? body.match(codePattern2)[1]
-    : "no code found";
-  let marketplace = body.match(marketPattern)
-    ? body.match(marketPattern)[1]
-    : "no marketplace found";
+    // add star in between because Tokopedia use *From:* Tokopedia to bold "From"
+    var marketPattern = /From:[\*]*\s*([a-zA-Z0-9._-]+)/;
 
-  let transaction = {
-    user,
-    code,
-    marketplace,
-    status: "open",
-    num: seqno,
-  };
+    let user = mail.from.value[0].address;
+    // // some code is No. Invoice: ___ instead of #___
+    let code = body.match(codePattern)
+      ? body.match(codePattern)[1]
+      : body.match(codePattern2)
+      ? body.match(codePattern2)[1]
+      : "no code found";
+    let marketplace = body.match(marketPattern)
+      ? body.match(marketPattern)[1]
+      : "no marketplace found";
 
-  // console.log(mail.text);
-
-  transactions.push(transaction);
+    let transaction = {
+      user,
+      code,
+      marketplace,
+      num: seqno,
+    };
+    transactions.push(transaction);
+    // console.log(body);
+  }
 };
 
 imap.once("end", function () {
@@ -138,3 +147,5 @@ imap.once("end", function () {
 });
 
 imap.connect();
+
+// CEK YG COMPLETE/DELIVERED ONLY YG LAIN IGNORE AJAAA

@@ -28,7 +28,6 @@ var transactions = [];
 //   user: "",
 //   code: "",
 //   marketplace: "",
-//   status: "",
 // };
 imap.once("ready", function () {
   imap.getBoxes(function (err, boxes) {

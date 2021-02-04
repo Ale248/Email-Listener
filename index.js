@@ -47,13 +47,13 @@ imap.once("ready", function () {
         return;
       }
       // mark emails as read
-      // imap.setFlags(results, ["\\Seen"], function (err) {
-      //   if (!err) {
-      //     console.log("Marked as read");
-      //   } else {
-      //     console.log(JSON.stringify(err, null, 2));
-      //   }
-      // });
+      imap.setFlags(results, ["\\Seen"], function (err) {
+        if (!err) {
+          console.log("Marked as read");
+        } else {
+          console.log(JSON.stringify(err, null, 2));
+        }
+      });
       // fetch results of the search
       var f = imap.seq.fetch(results, {
         bodies: "",

@@ -135,7 +135,7 @@ const processEmail = (mail, seqno) => {
       ? "Tokopedia" // Tokopedia probably
       : body.match(marketPattern2)
       ? "Shopee" // Shopee
-      : "no code found";
+      : "no marketplace found";
 
     let transaction = {
       user,

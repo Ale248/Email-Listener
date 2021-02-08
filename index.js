@@ -1,9 +1,8 @@
 require("dotenv").config();
 const Imap = require("imap");
-const path = require("path");
-const express = require("express");
-const inspect = require("util").inspect;
 const simpleParser = require("mailparser").simpleParser;
+const inspect = require("util").inspect;
+const MailParser = require("mailparser").MailParser;
 
 var imap = new Imap({
   user: `${process.env.EMAIL_USER}`,
@@ -17,11 +16,16 @@ var imap = new Imap({
 });
 
 function openInbox(cb) {
-  // has to be false to mark as read
-  imap.openBox("test", false, cb);
+  // has to be false to mark as read (read_only property)
+  imap.openBox("INBOX", false, cb);
 }
 
 var transactions = [];
+
+// temp "database"
+var userDB = ["madeline.feodora12@gmail.com"];
+
+var seqnos = [];
 
 // fill transactions array with info from UNREAD emails from inbox
 // transactions[i] = {
@@ -29,15 +33,16 @@ var transactions = [];
 //   code: "",
 //   marketplace: "",
 // };
-imap.once("ready", function () {
-  imap.getBoxes(function (err, boxes) {
-    console.log(boxes);
-  });
-  openInbox(function (err, box) {
+imap.once("ready", () => {
+  openInbox((err, box) => {
     if (err) throw err;
     console.log(box.messages.total + " message(s) found!");
-    // search inbox for UNSEEN messages
-    imap.search(["UNSEEN"], function (err, results) {
+
+    // search current box (inbox) for unread messages
+    // use seqno here instead of uid
+    // seqno is relative to the box, uid is unique for every email
+    imap.seq.search(["UNSEEN"], (err, results) => {
+      console.log(results);
       if (err) throw err;
       if (results.length === 0) {
         // if all emails are read
@@ -45,63 +50,50 @@ imap.once("ready", function () {
         imap.end();
         return;
       }
-      // mark emails as read
-      imap.setFlags(results, ["\\Seen"], function (err) {
-        if (!err) {
-          console.log("Marked as read");
-        } else {
-          console.log(JSON.stringify(err, null, 2));
-        }
-      });
-      // fetch results of the search
+
       var f = imap.seq.fetch(results, {
         bodies: "",
       });
-      f.on("message", function (msg, seqno) {
-        // seqno is the email's number from very first email (eg. 5th email)
+
+      f.on("message", (msg, seqno) => {
         console.log("Message #%d", seqno);
         var prefix = "(#" + seqno + ") ";
-        msg.on("body", function (stream, info) {
-          // use a specialized mail parsing library (https://github.com/andris9/mailparser)
+
+        msg.on("body", (stream, info) => {
           simpleParser(stream, (err, mail) => {
             if (err) throw err;
-            // console.log(prefix + mail.subject);
-            // console.log(prefix + mail.text);
+
+            // call helper function
+            // if true, then mark
+            // true is when email matches database, and no error when parsing
             processEmail(mail, seqno);
           });
         });
-        msg.once("attributes", function (attrs) {
-          console.log(prefix + "Attributes: %s", inspect(attrs, false, 8));
-        });
-        msg.once("end", function () {
+
+        msg.once("end", () => {
           console.log(prefix + "Finished");
         });
       });
-      f.once("error", function (err) {
+
+      f.once("error", (err) => {
         console.log("Fetch error: " + err);
       });
-      f.once("end", function () {
+
+      f.once("end", () => {
         console.log("Done fetching all messages!");
+        console.log("Seqnos: " + seqnos);
         imap.end();
       });
     });
+    console.log("Seqnos: " + seqnos);
   });
 });
 
-imap.once("error", function (err) {
-  console.log(err);
-});
-
-// transactions[i] = {
-//   user: "",
-//   code: "",
-//   marketplace: "",
-//   status: "",
-// };
-// only process completed transactions
 const processEmail = (mail, seqno) => {
+  console.log("Processing " + seqno);
   // 1 email = 1 transaction for now
   let body = mail.text;
+  // console.log(body);
 
   // pattern for "Pesanan Selesai" (Tokopedia)
   var completedPattern = /Pesanan Selesai:/;
@@ -143,17 +135,25 @@ const processEmail = (mail, seqno) => {
       num: seqno,
     };
     transactions.push(transaction);
-    // console.log(body);
+    seqnos.push(seqno);
+
+    // return true;
   }
+  // return false;
 };
+
+imap.once("error", function (err) {
+  console.log(err);
+});
+
+imap.connect();
 
 imap.once("end", function () {
   console.log("Connection ended");
 
   console.log("Num emails: " + transactions.length);
   console.log(transactions);
+  console.log("Seqnos: " + seqnos);
 });
 
-imap.connect();
-
-// CEK YG COMPLETE/DELIVERED ONLY YG LAIN IGNORE AJAAA
+// STILL BUG WITH PROCESSING EMAILS

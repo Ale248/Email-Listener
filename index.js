@@ -22,9 +22,6 @@ function openInbox(cb) {
 
 var transactions = [];
 
-// temp "database"
-var userDB = ["madeline.feodora12@gmail.com"];
-
 var seqnos = [];
 
 // fill transactions array with info from UNREAD emails from inbox
@@ -59,18 +56,27 @@ imap.once("ready", () => {
         console.log("Message #%d", seqno);
         var prefix = "(#" + seqno + ") ";
 
-        msg.on("body", (stream, info) => {
+        msg.once("body", (stream, info) => {
           simpleParser(stream, (err, mail) => {
             if (err) throw err;
 
             // call helper function
             // if true, then mark
             // true is when email matches database, and no error when parsing
-            processEmail(mail, seqno);
+            // mark = processEmail(mail, seqno);
+
+            // wait until current process is finished
+            let mark = processEmail(mail, seqno);
           });
         });
 
+        // msg.once("attributes", (attrs) => {
+        //   console.log(prefix + "Attributes: %s", inspect(attrs, false, 8));
+        // });
+
         msg.once("end", () => {
+          // maybe here
+
           console.log(prefix + "Finished");
         });
       });
@@ -82,15 +88,24 @@ imap.once("ready", () => {
       f.once("end", () => {
         console.log("Done fetching all messages!");
         console.log("Seqnos: " + seqnos);
-        imap.end();
+
+        // maybe can use emitter instead of waiting
+        setTimeout(() => {
+          imap.seq.setFlags(seqnos, ["\\Seen"], (err) => {
+            if (err) throw err;
+            console.log("Current SEQNOS: " + seqnos);
+          });
+          imap.end();
+        }, 20 * box.messages.total);
+
+        // imap.end();
       });
     });
-    console.log("Seqnos: " + seqnos);
   });
 });
 
 const processEmail = (mail, seqno) => {
-  console.log("Processing " + seqno);
+  console.log("ProcessingEmail " + seqno);
   // 1 email = 1 transaction for now
   let body = mail.text;
   // console.log(body);
@@ -136,24 +151,29 @@ const processEmail = (mail, seqno) => {
     };
     transactions.push(transaction);
     seqnos.push(seqno);
-
-    // return true;
+    console.log("ProcessEmail " + seqno + " finished");
+    return true;
   }
-  // return false;
+  console.log("ProcessEmail " + seqno + " finished");
+  return false;
 };
 
-imap.once("error", function (err) {
+imap.once("error", (err) => {
   console.log(err);
 });
 
-imap.connect();
-
-imap.once("end", function () {
+imap.once("end", () => {
   console.log("Connection ended");
 
   console.log("Num emails: " + transactions.length);
   console.log(transactions);
   console.log("Seqnos: " + seqnos);
 });
+
+const runScript = () => {
+  imap.connect();
+};
+
+runScript();
 
 // STILL BUG WITH PROCESSING EMAILS
